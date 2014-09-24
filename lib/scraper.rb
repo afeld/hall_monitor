@@ -4,15 +4,6 @@ require 'octokit'
 Dotenv.load
 
 class Scraper
-  PR_EVENT_TYPES = %w(
-    IssueCommentEvent
-    PullRequestEvent
-    PullRequestReviewCommentEvent
-    StatusEvent
-  ).to_set.freeze
-  # others
-  # CommitCommentEvent
-
   def client
     @client ||= Octokit::Client.new(access_token: ENV['GITHUB_TOKEN'])
   end
@@ -25,10 +16,6 @@ class Scraper
     self.client.organization_public_events('bfl-itp')
   end
 
-  def pr_events
-    self.events.select {|event| PR_EVENT_TYPES.include?(event.type) }
-  end
-
   def pr_url(event)
     case event.type
     when 'IssueCommentEvent'
@@ -36,18 +23,19 @@ class Scraper
     when 'PullRequestEvent', 'PullRequestReviewCommentEvent'
       event.payload.pull_request.url
     else
-      raise 'dunno'
+      # TODO handle these?
+      # CommitCommentEvent
+      # StatusEvent
+      nil
     end
   end
 
   def run
     last_by_pr_url = {}
-    self.pr_events.reverse_each do |event|
-      begin
-        url = pr_url(event)
+    self.events.reverse_each do |event|
+      url = pr_url(event)
+      if url
         last_by_pr_url[url] = event
-      rescue => e
-        puts event.type
       end
     end
 
